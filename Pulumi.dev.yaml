@@ -1,0 +1,4 @@
+config:
+  provider:backend_port: "3000"
+  provider:frontend_port: "3001"
+  provider:mongo_port: "27017"
