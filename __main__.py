@@ -40,18 +40,32 @@ mongo_image = docker.RemoteImage(
 )
 
 # create a network 
-network = docker.network("network",name=f"services-{stack}")
+network = docker.Network("network",name=f"services-{stack}")
+
+# create a mongo container
+mongo_container = docker.Container(
+    "mongo_container",
+    image=mongo_image.repo_digest,
+    name=f"mongo-{stack}",
+    ports=[docker.ContainerPortArgs(
+    internal=mongo_port,
+    external=mongo_port
+    )],
+    networks_advanced=[docker.ContainerNetworksAdvancedArgs(
+    name=network.name,
+    aliases=["mongo"]
+    )]
+)
 
 # create the backend conteiner
-
 backend_container = docker.Container(
     "backend_container",
-    name = f"backend-{stack}"
+    name = f"backend-{stack}",
     image = backend.repo_digest,
     ports=[docker.ContainerPortArgs(
     internal=backend_port,
     external=backend_port)],
-    envs[
+    envs=[
     f"DATABASE_HOST={mongo_host}",
     f"DATABASE_NAME={database}",
     f"NODE_ENV={node_enviroment}"
@@ -59,6 +73,24 @@ backend_container = docker.Container(
     networks_advanced=[docker.ContainerNetworksAdvancedArgs(
     name=network.name
     )],
-    opts=pulumi.ResourceOptions(depends_on[mongo_container])
+    opts=pulumi.ResourceOptions(depends_on=[mongo_container])
         
+)
+
+# create frontend container
+frontend_container = docker.Container(
+    "frontend_container",
+    image=frontend.repo_digest,
+    name=f"frontend-{stack}",
+    ports=[docker.ContainerPortArgs(
+    internal=frontend_port,
+    external=frontend_port)],
+    envs=[
+    f"LISTEN_PORT={mongo_host}",
+    f"HTTP_PROXY=backend-{stack}:{backend_port}",
+    f"PROXY_PROTOCOL={protocol}"
+    ],
+    networks_advanced=[docker.ContainerNetworksAdvancedArgs(
+    name=network.name
+    )]
 )
